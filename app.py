@@ -17,27 +17,46 @@ def scrap(url):
     soup = BeautifulSoup(url_get.content,"html.parser")
     
     #Find the key to get the information
-    table = soup.find(___) 
-    tr = table.find_all(___) 
+    table = soup.find('div', attrs={'class':'lister-list'}) 
+    tr = table.find_all('div', attrs={'class':'lister-item mode-advanced'})
 
-    temp = [] #initiating a tuple
+    title = [] #initiating a tuple
+    imdb_ratings = [] #initiating a tuple
+    metascores = [] #initiating a tuple
+    votes = [] #initiating a tuple
 
-    for i in range(1, len(tr)):
-        row = table.find_all('tr')[i]
-        #use the key to take information here
-        #name_of_object = row.find_all(...)[0].text
+    for i in tr:
+        # The name
+        movie_title = i.h3.a.text
+        title.append(movie_title)
+        # The IMDB rating
+        imdb = i.strong.text
+        imdb_ratings.append(imdb)
+        # The Metascore
+        if i.find('div', class_ = 'ratings-metascore') is not None:
+          m_score = i.find('span', class_ = 'metascore').text
+          metascores.append(m_score)
+        else:
+          m_score = 0
+          metascores.append(m_score)
+        # The number of votes
+        vote = i.find('span', attrs = {'name':'nv'})['data-value']
+        votes.append(vote)
 
+    #creating the dataframe
+    df = pd.DataFrame({
+    'movie': title,
+    'imdb': imdb_ratings,
+    'metascore': metascores,
+    'votes': votes
+    }) 
 
-
-
-
-
-        temp.append((___)) #append the needed information 
-    
-    temp = temp[::-1] #remove the header
-
-    df = pd.DataFrame(temp, columns = (___)) #creating the dataframe
    #data wranggling -  try to change the data type to right data type
+
+    df['imdb'] = df['imdb'].astype('float')
+    df['imdb'] = df['imdb']*10
+    df['metascore'] = df['metascore'].astype('int')
+    df['votes'] = df['votes'].astype('int')
 
    #end of data wranggling
 
@@ -45,11 +64,15 @@ def scrap(url):
 
 @app.route("/")
 def index():
-    df = scrap(___) #insert url here
+    df = scrap('http://imdb.com/search/title/?release_date=2019-01-01,2019-12-31') #insert url here
 
     #This part for rendering matplotlib
-    fig = plt.figure(figsize=(5,2),dpi=300)
-    df.plot()
+    best7 = df.sort_values('votes', ascending=False).head(7)
+    fig = plt.figure(figsize=(13,7),dpi=300)
+    plt.plot( 'movie', 'imdb', data=best7, marker='|', markerfacecolor='blue', markersize=12, color='skyblue', linewidth=4)
+    plt.plot( 'movie', 'metascore', data=best7, marker='x', color='olive', linewidth=2)
+    plt.title('imdb score vs metascore')
+    plt.legend()
     
     #Do not change this part
     plt.savefig('plot1',bbox_inches="tight") 
